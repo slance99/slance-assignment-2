@@ -1,0 +1,149 @@
+---
+title: "Assignment 2: Task 1"
+author: "Sam Lance"
+date: January 25, 2025
+format:
+  html:
+    code-fold: false
+    toc: true
+    number-sections: true
+    embed-resources: true
+    theme: Lux
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r}
+#| echo: true
+#| message: false
+
+library(ggplot2)
+library(tidyverse)
+library(here)
+library(janitor)
+library(patchwork)
+library(lubridate)
+library(forcats)
+library(gghighlight)
+library(stringr)
+```
+
+## Loading the Data
+
+```{r}
+county_og <- read.csv(here("t2_data", "NRI_Table_Counties.csv")) 
+
+county_mod <- county_og |>
+  clean_names() |>
+  filter(!(state %in% c("American Samoa", "Guam", "Northern Mariana Islands", "Puerto Rico", "Virgin Islands", "District of Columbia"))) |>
+  group_by(state) |>
+  summarize(avg_risk = mean(risk_score)) |>
+  mutate(state = fct_reorder(state, avg_risk)) |>
+  arrange(avg_risk)
+```
+
+## Visualization 1
+
+### **Psuedocode**
+
+-   Group_by state -\> summarize to find the average risk score for each state
+
+-   Create a lollipop or column graph of risk scores
+
+-   GGhighlight to highlight California in particular
+
+### **Creating Plot**
+
+```{r}
+#| label: fig-risk-scores
+#| fig-width: 10
+#| fig-height: 10
+#| fig-cap: "Data: FEMA National Risk Index (2023 Release) Accessed 1/30/25"
+#| fig-alt: "A lollipop chart showing the average risk scores from FEMA by state. All 50 states are shown, with Montana having the lowest overall risk, and California having the highest"
+
+county_og |>
+  ggplot(aes(x=state, y=avg_risk)) +
+  geom_segment(aes(y=0, yend=avg_risk), color = "darkorange") +
+    geom_point(color = "darkorange") + 
+  gghighlight(state == "California", use_direct_label = FALSE) +
+  labs(y = "Average Risk Score", x = NULL, title = "Average FEMA Risk Scores for the United States", subtitle = "California faces the highest average risk of all 50 US states") +
+  scale_y_continuous(expand = expansion(mult = 0.01)) +
+  theme_classic() +
+  coord_flip() +
+  theme(
+    axis.text = element_text(color = "#686868", size = 10),
+    axis.title = element_text(color = "#686868", size = 10),
+    plot.subtitle = element_text(color = "#686868", size = 12),
+    plot.title = element_text(hjust = 0, color = "#686868", size = 18,
+                              margin = margin(t = 10, r = 0, b = 15, l = 0))
+  )
+
+```
+
+### Answering Questions
+
+-   What are your variables of interest and what kinds of data (e.g. numeric, categorical, ordered, etc.) are they (a bullet point list is fine)?
+
+    -   The variables I used were risk scores for each county (numeric) and the state name (character).
+
+-   How did you decide which type of graphic form was best suited for answering the question? What alternative graphic forms could you have used instead? Why did you settle on this particular graphic form
+
+    -   I wanted to be able to visually see which states had the largest risk, which is best done through a comparison of lengths. This left me deciding between a bar chart with geom_col or a lollipop chart, but I eventually settled on lollipop since there were so many states. I wanted to remove the bulk in the chart a bar chart could have, so I picked the more slender option.
+
+-   What modifications did you make to this viz to make it more easily readable?
+
+    -   I changed the height and width of my plot to make my labels have more space, changed the font sizes to allow for better readability, ordered my states from highest to lowest risk, and finally highlighted our state of interest, California.
+
+-   Is there anything you wanted to implement, but didn’t know how? If so, please describe?
+
+    -   I wanted to find a way to describe the variance between the counties, but with so many states I was having a hard time. A possible solution would have been to look at the top or bottom 3-5 states and do a position = dodge bar plot but for this assignment I felt this would not answer the desired question.
+
+## Visualization 2
+
+### Loading Data
+
+```{r}
+# #.........see all available ACS variables + descriptions.........
+# acs_vars <- tidycensus::load_variables(year = 2023,
+#                                        dataset = "acs1")
+# 
+# #..................import race & ethnicity data..................
+# race_ethnicity <- tidycensus::get_acs(
+#   geography = "county",
+#   survey = "acs1",
+#   variables = c("B01003_001", "B02001_002", "B02001_003",
+#                 "B02001_004", "B02001_005", "B02001_006",
+#                 "B02001_007", "B02001_008", "B03002_012",
+#                 "B03002_002"),
+#   state = "CA", 
+#   year = 2023) |>
+#   dplyr::left_join(acs_vars, by = dplyr::join_by(variable == name)) # join variable descriptions (so we know what's what!)
+```
+
+### Cleaning Data 
+
+```{r}
+
+risk_counties <- county_og |>
+  clean_names() |>
+  filter(state == "California") |>
+  select("county", "risk_score")
+
+race_eth_og <- read.csv(here("t2_data", "ACS-race-ethnicity.csv")) 
+
+population <- race_eth_og |>
+  filter(concept == "Total Population") 
+
+race_eth_mod <- race_eth_og |>
+  clean_names() |>
+  filter(concept == "Race") |>
+  mutate(race = str_remove(label, "Estimate!!Total:!!"),
+         county = str_remove(name, " County, California"),
+         race = str_replace(race, "alone", ""),
+         race = str_remove(race, ":")) |>
+  select("race", "county", "estimate") |>
+  full_join(risk_counties)
+```
