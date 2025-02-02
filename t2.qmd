@@ -34,14 +34,16 @@ library(stringr)
 ## Loading the Data
 
 ```{r}
+#READ IN DATA 
 county_og <- read.csv(here("t2_data", "NRI_Table_Counties.csv")) 
 
+#CLEAN/ WRANGLE DATA 
 county_mod <- county_og |>
-  clean_names() |>
-  filter(!(state %in% c("American Samoa", "Guam", "Northern Mariana Islands", "Puerto Rico", "Virgin Islands", "District of Columbia"))) |>
-  group_by(state) |>
-  summarize(avg_risk = mean(risk_score)) |>
-  mutate(state = fct_reorder(state, avg_risk)) |>
+  clean_names() |> #put all in snake case
+  filter(!(state %in% c("American Samoa", "Guam", "Northern Mariana Islands", "Puerto Rico", "Virgin Islands", "District of Columbia"))) |> #filter out territories 
+  group_by(state) |> #group by state
+  summarize(avg_risk = mean(risk_score)) |> #get the mean of the risk score
+  mutate(state = fct_reorder(state, avg_risk)) |> #put in state order by risk score 
   arrange(avg_risk)
 ```
 
@@ -59,27 +61,31 @@ county_mod <- county_og |>
 
 ```{r}
 #| label: fig-risk-scores
-#| fig-width: 10
-#| fig-height: 10
+#| fig-width: 10 #set the figure width
+#| fig-height: 10 #set the figure height 
 #| fig-cap: "Data: FEMA National Risk Index (2023 Release) Accessed 1/30/25"
 #| fig-alt: "A lollipop chart showing the average risk scores from FEMA by state. All 50 states are shown, with Montana having the lowest overall risk, and California having the highest"
 
-county_og |>
+#CREATE PLOT 
+county_mod |>
   ggplot(aes(x=state, y=avg_risk)) +
-  geom_segment(aes(y=0, yend=avg_risk), color = "darkorange") +
-    geom_point(color = "darkorange") + 
-  gghighlight(state == "California", use_direct_label = FALSE) +
-  labs(y = "Average Risk Score", x = NULL, title = "Average FEMA Risk Scores for the United States", subtitle = "California faces the highest average risk of all 50 US states") +
-  scale_y_continuous(expand = expansion(mult = 0.01)) +
-  theme_classic() +
-  coord_flip() +
+  geom_segment(aes(y=0, yend=avg_risk), color = "darkorange") + #geom_segment for lolly
+  geom_point(color = "darkorange") + #geom point for lolly 
+  gghighlight(state == "California", use_direct_label = FALSE) + #highlight CA 
+  labs(y = "Average Risk Score", 
+       x = NULL, 
+       title = "Average FEMA Risk Scores for the United States", 
+       subtitle = "California faces the highest average risk of all 50 US states") +
+  scale_y_continuous(expand = expansion(mult = 0.01)) + #expand to y axis almost completely
+  theme_classic() + #premade theme 
+  coord_flip() + #flip axes 
   theme(
     axis.text = element_text(color = "#686868", size = 10),
     axis.title = element_text(color = "#686868", size = 10),
     plot.subtitle = element_text(color = "#686868", size = 12),
     plot.title = element_text(hjust = 0, color = "#686868", size = 18,
                               margin = margin(t = 10, r = 0, b = 15, l = 0))
-  )
+  ) #customize text and colors 
 
 ```
 
@@ -126,24 +132,42 @@ county_og |>
 ### Cleaning Data 
 
 ```{r}
-
+#RE-CLEAN COUNTY DATA 
 risk_counties <- county_og |>
-  clean_names() |>
-  filter(state == "California") |>
-  select("county", "risk_score")
+  clean_names() |> #snake case
+  filter(state == "California") |> #only want CA counties
+  select("county", "risk_score") #pick county + risk score
 
+#LOAD RACE DATA 
 race_eth_og <- read.csv(here("t2_data", "ACS-race-ethnicity.csv")) 
 
+#CREATE POPULATION DF 
 population <- race_eth_og |>
-  filter(concept == "Total Population") 
+  filter(concept == "Total Population") #create a df of just the population for later use
 
+#CLEAN RACE DATA 
 race_eth_mod <- race_eth_og |>
   clean_names() |>
-  filter(concept == "Race") |>
-  mutate(race = str_remove(label, "Estimate!!Total:!!"),
+  filter(concept == "Race") |> #don't want total pop, just race
+  mutate(race = str_remove(label, "Estimate!!Total:!!"), #cleaning up the text in the columns
          county = str_remove(name, " County, California"),
          race = str_replace(race, "alone", ""),
          race = str_remove(race, ":")) |>
-  select("race", "county", "estimate") |>
-  full_join(risk_counties)
+  select("race", "county", "estimate") |> #select desired columns
+  full_join(risk_counties) #join to the risk data by county
+```
+
+Cleaning Data Attempt 2
+
+```{r}
+
+primary_white <- race_eth_og |>
+  clean_names() |>
+  filter(concept == "Race") |> #don't want total pop, just race
+  mutate(race = str_remove(label, "Estimate!!Total:!!"), #cleaning up the text in the columns
+         county = str_remove(name, " County, California"),
+         race = str_replace(race, "alone", ""),
+         race = str_remove(race, ":")) |>
+  select("race", "county", "estimate") |> #select desired columns
+  full_join(risk_counties) |> #join to the risk data by county 
 ```
