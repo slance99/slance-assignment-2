@@ -150,7 +150,14 @@ race_eth_og <- read.csv(here("t2_data", "ACS-race-ethnicity.csv"))
 
 #CREATE POPULATION DF 
 population <- race_eth_og |>
-  filter(concept == "Total Population") #create a df of just the population for later use
+  filter(concept == "Total Population") |>#create a df of just the population for later use
+  clean_names() |>
+  mutate(race = str_remove(label, "Estimate!!Total:!!"), #cleaning up the text in the columns
+         county = str_remove(name, " County, California"),
+         race = str_replace(race, "alone", ""),
+         race = str_remove(race, ":")) |>
+  select("race", "county", "estimate") 
+
 
 #CLEAN RACE DATA 
 race_eth_mod <- race_eth_og |>
@@ -225,7 +232,7 @@ ggplot(race_eth_mod_attempt2) +
 #try text font fill and color plot by the layers 
 ```
 
-```{}
+```         
 ```
 
 ### Answering Questions
