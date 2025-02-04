@@ -139,7 +139,7 @@ NOTE: Struggled to load the data with API key, got data from Liv Hemond :)
 #| message: false
 
 
-#RE-CLEAN COUNTY DATA 
+#OLD CODE - DO NOT GRADE
 risk_counties <- county_og |>
   clean_names() |> #snake case
   filter(state == "California") |> #only want CA counties
@@ -199,17 +199,17 @@ race_eth_mod_attempt2 <- race_eth_og |>
 
 
 ggplot(race_eth_mod_attempt2) +
-  geom_col(aes(x = reorder(county, estimate), y = estimate, fill = race, color = risk_ordered)) +  
+  geom_col(aes(x = reorder(county, estimate), y = estimate, fill = race, color = risk_ordered)) +  #reordering by estimate, adding outline of risk by category 
   labs(
     title = "Race Distribution by County",
     x = "County",
     y = "Population Estimate",
     fill = "Race") +
   scale_fill_manual(values = c("#1C1C1C", "#363636",  "#505050",  "#6A6A6A","#848484",  
-  "#9E9E9E", "#B8B8B8",  "#D2D2D2")) +
-  scale_color_manual(values = c("yellow", "orange", "red")) +
+  "#9E9E9E", "#B8B8B8",  "#D2D2D2")) + #setting fill colors 
+  scale_color_manual(values = c("yellow", "orange", "red")) + #setting outline colors
   scale_y_continuous(expand = expansion(mult = 0.01)) + #expand to y axis almost completely
-  coord_flip() + 
+  coord_flip() + #flip axes 
   theme_minimal() +
   theme(
     axis.text.x = element_text(hjust = 1, size = 12),
@@ -223,6 +223,9 @@ ggplot(race_eth_mod_attempt2) +
 
 
 #try text font fill and color plot by the layers 
+```
+
+```{}
 ```
 
 ### Answering Questions
