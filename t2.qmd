@@ -8,7 +8,7 @@ format:
     toc: true
     number-sections: true
     embed-resources: true
-    theme: Lux
+    theme: Cyborg
 editor: visual
 execute:
   echo: true
@@ -91,25 +91,27 @@ county_mod |>
 
 ### Answering Questions
 
--   What are your variables of interest and what kinds of data (e.g. numeric, categorical, ordered, etc.) are they (a bullet point list is fine)?
+#### What are your variables of interest and what kinds of data (e.g. numeric, categorical, ordered, etc.) are they (a bullet point list is fine)?
 
-    -   The variables I used were risk scores for each county (numeric) and the state name (character).
+The variables I used were risk scores for each county (numeric) and the state name (character).
 
--   How did you decide which type of graphic form was best suited for answering the question? What alternative graphic forms could you have used instead? Why did you settle on this particular graphic form
+#### How did you decide which type of graphic form was best suited for answering the question? What alternative graphic forms could you have used instead? Why did you settle on this particular graphic form
 
-    -   I wanted to be able to visually see which states had the largest risk, which is best done through a comparison of lengths. This left me deciding between a bar chart with geom_col or a lollipop chart, but I eventually settled on lollipop since there were so many states. I wanted to remove the bulk in the chart a bar chart could have, so I picked the more slender option.
+I wanted to be able to visually see which states had the largest risk, which is best done through a comparison of lengths. This left me deciding between a bar chart with geom_col or a lollipop chart, but I eventually settled on lollipop since there were so many states. I wanted to remove the bulk in the chart a bar chart could have, so I picked the more slender option.
 
--   What modifications did you make to this viz to make it more easily readable?
+#### What modifications did you make to this viz to make it more easily readable?
 
-    -   I changed the height and width of my plot to make my labels have more space, changed the font sizes to allow for better readability, ordered my states from highest to lowest risk, and finally highlighted our state of interest, California.
+I changed the height and width of my plot to make my labels have more space, changed the font sizes to allow for better readability, ordered my states from highest to lowest risk, and finally highlighted our state of interest, California.
 
--   Is there anything you wanted to implement, but didn’t know how? If so, please describe?
+#### Is there anything you wanted to implement, but didn’t know how? If so, please describe?
 
-    -   I wanted to find a way to describe the variance between the counties, but with so many states I was having a hard time. A possible solution would have been to look at the top or bottom 3-5 states and do a position = dodge bar plot but for this assignment I felt this would not answer the desired question.
+I wanted to find a way to describe the variance between the counties, but with so many states I was having a hard time. A possible solution would have been to look at the top or bottom 3-5 states and do a position = dodge bar plot but for this assignment I felt this would not answer the desired question.
 
 ## Visualization 2
 
 ### Loading Data
+
+NOTE: Struggled to load the data with API key, got data from Liv Hemond :)
 
 ```{r}
 # #.........see all available ACS variables + descriptions.........
@@ -129,9 +131,14 @@ county_mod |>
 #   dplyr::left_join(acs_vars, by = dplyr::join_by(variable == name)) # join variable descriptions (so we know what's what!)
 ```
 
-### Cleaning Data 
+### Cleaning Data
 
 ```{r}
+#| code-fold: TRUE
+#| echo: true
+#| message: false
+
+
 #RE-CLEAN COUNTY DATA 
 risk_counties <- county_og |>
   clean_names() |> #snake case
@@ -157,17 +164,87 @@ race_eth_mod <- race_eth_og |>
   full_join(risk_counties) #join to the risk data by county
 ```
 
-Cleaning Data Attempt 2
-
 ```{r}
 
-primary_white <- race_eth_og |>
+#RE-CLEAN COUNTY DATA 
+risk_counties_2 <- county_og |>
+  clean_names() |> #snake case
+  filter(state == "California") |> #only want CA counties
+  select("county", "risk_ratng") #pick county + risk score
+
+#CLEAN RACE DATA 
+race_eth_mod_attempt2 <- race_eth_og |>
   clean_names() |>
   filter(concept == "Race") |> #don't want total pop, just race
   mutate(race = str_remove(label, "Estimate!!Total:!!"), #cleaning up the text in the columns
          county = str_remove(name, " County, California"),
          race = str_replace(race, "alone", ""),
          race = str_remove(race, ":")) |>
-  select("race", "county", "estimate") |> #select desired columns
-  full_join(risk_counties) |> #join to the risk data by county 
+  select("race", "county", "estimate")  |>#select desired columns
+  full_join(risk_counties_2) |> #join to the risk data by county
+  drop_na() |>
+  mutate(risk_ordered = fct_relevel(risk_ratng, "Relatively Moderate", "Relatively High", "Very High")) |>
+  arrange(risk_ordered)
 ```
+
+### Creating Plot
+
+```{r}
+#| label: race-risk-scores
+#| fig-width: 14 #set the figure width
+#| fig-height: 10 #set the figure height 
+#| fig-cap: "Data: FEMA National Risk Index (2023 Release) and the US Census Bureau's American Community Survey Accessed 1/30/25"
+#| fig-alt: "A bar chart showing the population of each county in California, divided into the racial groups that make up that population and risk categories marked in three colors. Los Angeles has both the highest risk and the lagest population"
+
+
+
+ggplot(race_eth_mod_attempt2) +
+  geom_col(aes(x = reorder(county, estimate), y = estimate, fill = race, color = risk_ordered)) +  
+  labs(
+    title = "Race Distribution by County",
+    x = "County",
+    y = "Population Estimate",
+    fill = "Race") +
+  scale_fill_manual(values = c("#1C1C1C", "#363636",  "#505050",  "#6A6A6A","#848484",  
+  "#9E9E9E", "#B8B8B8",  "#D2D2D2")) +
+  scale_color_manual(values = c("yellow", "orange", "red")) +
+  scale_y_continuous(expand = expansion(mult = 0.01)) + #expand to y axis almost completely
+  coord_flip() + 
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(hjust = 1, size = 12),
+    axis.text.y = element_text(size = 12), 
+    axis.title.y = element_blank(), 
+    legend.position = "bottom", 
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10),
+    legend.key.size = unit(0.5, 'cm')
+  )
+
+
+#try text font fill and color plot by the layers 
+```
+
+### Answering Questions
+
+#### What are your variables of interest and what kinds of data (e.g. numeric, categorical, ordered, etc.) are they (a bullet point list is fine)?
+
+This chart utilizes the following data:
+
+-   Estimate - numeric data of the amount of people of a specific racial group in a county
+
+-   County - categorical data of the counties in California
+
+-   Risk Rating - categorical data of the risk rating of a specific county in California (moderate, high, very high)
+
+#### How did you decide which type of graphic form was best suited for answering the question? What alternative graphic forms could you have used instead? Why did you settle on this particular graphic form?
+
+I struggled to find a graphic form to represent this data, as the risk scores were by county and not by racial group for that county. With that in mind, since I had the populations I thought it would be best to do a stacked bar chart to show the general racial makeup of each county in California, with the label colors showing the overall risk for that county. If I did have risk scores for each group for each county, I would have taken an average for each racial group and created a horizontal bar chart.
+
+#### What modifications did you make to this viz to make it more easily readable?
+
+I expanded the size of my figure since there is a lot of data to showcase, and tried to minimize the amount of color so the overall message of the graph would not be be lost.
+
+#### Is there anything you wanted to implement, but didn’t know how? If so, please describe.
+
+Instead of coloring the labels, I wanted to have an transparent layer over the bars of the same length so it has a thin wash of the risk color over the gray. Unfortunately I could not do this within the time frame of this project.
